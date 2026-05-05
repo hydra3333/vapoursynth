@@ -88,6 +88,8 @@ public:
 
     bool is_over_limit() const { return m_allocated > m_limit; }
 
+    bool is_under_limit() const { return m_allocated < (m_limit >> 1); }
+
     // Called only from VSCore destructor.
     void on_core_freed();
 };

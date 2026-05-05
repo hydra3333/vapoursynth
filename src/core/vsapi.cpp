@@ -1112,12 +1112,12 @@ static const VSFilterDependency *VS_CC getNodeDependency(VSNode *node, int index
 
 static void VS_CC clearNodeCache(VSNode *node) VS_NOEXCEPT {
     assert(node);
-    node->clearCache();
+    node->clearCache(false);
 }
 
 static void VS_CC clearCoreCaches(VSCore *core) VS_NOEXCEPT {
     assert(core);
-    core->clearCaches();
+    core->clearCaches(false);
 }
 
 static int VS_CC getCoreNodeTiming(VSCore *core) VS_NOEXCEPT {

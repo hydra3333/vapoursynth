@@ -1,3 +1,6 @@
+r76:
+completely reworked cache limits so they are much stricter and the number of threads will now be dynamically lowered to avoid using too much memory
+
 r75:
 slightly improved memory usage when many frames are queued for output
 improved things for distro packagers

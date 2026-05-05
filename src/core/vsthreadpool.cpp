@@ -62,11 +62,11 @@ bool VSThreadPool::taskCmp(const PVSFrameContext &a, const PVSFrameContext &b) {
     return (a->reqOrder < b->reqOrder) || (a->reqOrder == b->reqOrder && a->key.second < b->key.second);
 }
 
-void VSThreadPool::runTasksWrapper(VSThreadPool *owner, std::atomic<bool> &stop) {
+void VSThreadPool::runTasksWrapper(VSThreadPool *owner, bool &stop) {
     owner->runTasks(stop);
 }
 
-void VSThreadPool::runTasks(std::atomic<bool> &stop) {
+void VSThreadPool::runTasks(bool &stop) {
 #ifdef VS_TARGET_CPU_X86
     if (!vs_isSSEStateOk())
         core->logFatal("Bad SSE state detected after creating new thread");
@@ -205,6 +205,29 @@ void VSThreadPool::runTasks(std::atomic<bool> &stop) {
 
                 frameContext->numFrameRequests = frameContext->reqList.size();
                 frameContext->reqList.clear();
+
+                // check to see if it's time to reevaluate cache sizes
+                if (core->memory->is_over_limit()) {
+                    ticks = 0;
+                    core->notifyCaches(true);
+                } else if (++ticks == 500) { // a normal tick for caches to adjust their sizes based on recent history
+                    ticks = 0;
+                    core->notifyCaches(false);
+                }
+
+                if (currentMaxThreads >= activeThreads * 2 && core->memory->is_over_limit() && activeThreads > 0) {
+                    --currentMaxThreads;
+                    assert(currentMaxThreads > 0);
+                    if (flushCaches) {
+                        core->logMessage(mtInformation, "Maximum running threads reduced to " + std::to_string(currentMaxThreads) + "/" + std::to_string(maxThreads) + " due to excessive memory usage");
+                    } else {
+                        core->logMessage(mtInformation, "Maximum running threads reduced to " + std::to_string(currentMaxThreads) + "/" + std::to_string(maxThreads) + " due to excessive memory usage, flushing pipeline");
+                        flushCaches = true;
+                    }
+                } else if (currentMaxThreads < maxThreads && core->memory->is_under_limit() && ++reqMemCounter % 500 == 0) {
+                    ++currentMaxThreads;
+                    core->logMessage(mtInformation, "Maximum running threads increased to " + std::to_string(currentMaxThreads) + "/" + std::to_string(maxThreads) + " due to more memory being available");
+                }
             }
 
             if (frameProcessingDone)
@@ -252,14 +275,31 @@ void VSThreadPool::runTasks(std::atomic<bool> &stop) {
             break;
         }
 
-        if (!ranTask || activeThreads > maxThreads) {
+        if (!ranTask || (activeThreads > currentMaxThreads) || (core->memory->is_over_limit() && activeThreads > 1)) {
             --activeThreads;
             if (stop) {
                 lock.unlock();
                 break;
             }
-            if (++idleThreads == allThreads.size())
-                allIdle.notify_one();
+
+            if (allThreads.size() > currentMaxThreads + 1) {
+                allThreads.erase(std::this_thread::get_id());
+                newWork.notify_all();
+                lock.unlock();
+                break;
+            }
+                
+            if (++idleThreads == allThreads.size()) {
+                if (flushCaches) {
+                    core->clearCaches(true);
+                    flushCaches = false;
+                    std::swap(tasks, altTasks);
+                    core->logMessage(mtInformation, "Pipeline flushed, resuming processing");
+                    newWork.notify_all();
+                } else {
+                    allIdle.notify_one();
+                }
+            }
 
             newWork.wait(lock);
             --idleThreads;
@@ -268,7 +308,7 @@ void VSThreadPool::runTasks(std::atomic<bool> &stop) {
     }
 }
 
-VSThreadPool::VSThreadPool(VSCore *core) : core(core), activeThreads(0), idleThreads(0), reqCounter(0), stopThreads(false), ticks(0) {
+VSThreadPool::VSThreadPool(VSCore *core) : core(core), activeThreads(0), idleThreads(0), reqCounter(0), reqMemCounter(0), stopThreads(false), flushCaches(false), ticks(0) {
     setThreadCount(0);
 }
 
@@ -290,6 +330,7 @@ size_t VSThreadPool::setThreadCount(size_t threads) {
         maxThreads = 1;
         core->logMessage(mtWarning, "Couldn't detect optimal number of threads. Thread count set to 1.");
     }
+    currentMaxThreads = maxThreads;
     return maxThreads;
 }
 
@@ -300,11 +341,16 @@ void VSThreadPool::queueTask(const PVSFrameContext &ctx) {
 }
 
 void VSThreadPool::wakeThread() {
-    if (activeThreads < maxThreads) {
-        if (idleThreads == 0) // newly spawned threads are active so no need to notify an additional thread
-            spawnThread();
-        else
-            newWork.notify_one();
+    size_t numActive = activeThreads;
+    if (numActive < currentMaxThreads) {
+        if (core->memory->is_over_limit() && numActive > 0) {
+            // do nothing
+        } else {
+            if (idleThreads == 0) // newly spawned threads are active so no need to notify an additional thread
+                spawnThread();
+            else
+                newWork.notify_one();
+        }
     }
 }
 
@@ -321,8 +367,12 @@ void VSThreadPool::startExternal(const PVSFrameContext &context) {
     std::lock_guard<std::mutex> l(taskLock);
     context->reqOrder = ++reqCounter;
     assert(context);
-    tasks.push_back(context); // external requests can't be combined so just add to queue
-    wakeThread();
+    if (flushCaches) {
+        altTasks.push_back(context);
+    } else {
+        tasks.push_back(context); // external requests can't be combined so just add to queue
+        wakeThread();
+    }
 }
 
 void VSThreadPool::returnFrame(VSFrameContext *rCtx, const PVSFrame &f) {
@@ -361,16 +411,6 @@ void VSThreadPool::startInternalRequest(const PVSFrameContext &notify, NodeOutpu
 
     if (key.second < 0)
         core->logFatal("Negative frame request by: " + notify->key.first->getName());
-
-    // check to see if it's time to reevaluate cache sizes
-    if (core->memory->is_over_limit()) {
-        ticks = 0;
-        core->notifyCaches(true);
-    } else if (++ticks == 500) { // a normal tick for caches to adjust their sizes based on recent history
-        ticks = 0;
-        core->notifyCaches(false);
-    }
-
 
     auto it = allContexts.find(key);
     if (it != allContexts.end()) {

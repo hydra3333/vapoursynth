@@ -1124,9 +1124,11 @@ void VSNode::cacheFrame(const VSFrame *frame, int n) {
     cache.insert(n, {const_cast<VSFrame *>(frame), true});
 }
 
-void VSNode::clearCache() {
+void VSNode::clearCache(bool resetSize) {
     std::lock_guard<std::mutex> lock(cacheMutex);
     cache.clear();
+    if (resetSize)
+        cache.setMaxFrames(20);
 }
 
 void VSNode::reserveThread() {
@@ -1877,10 +1879,10 @@ void VSCore::destroyFilterInstance(VSNode *node) {
     freeDepth--;
 }
 
-void VSCore::clearCaches() {
+void VSCore::clearCaches(bool resetSize) {
     std::lock_guard<std::mutex> lock(cacheLock);
     for (const auto &iter : caches)
-        iter->clearCache();
+        iter->clearCache(resetSize);
 }
 
 bool VSCore::getNodeTiming() noexcept {
