@@ -1,4 +1,5 @@
 r76:
+fixed issue where caches could be forgotten with frames still in them and leak memory
 completely reworked cache limits so they are much stricter and the number of threads will now be dynamically lowered to avoid using too much memory
 
 r75:
