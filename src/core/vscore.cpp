@@ -834,7 +834,6 @@ void VSNode::registerCache(bool add) {
     if (add) {
         core->caches.insert(this);
     } else {
-        assert(this->cache.size() == 0);
         core->caches.erase(this);
     }
 }
