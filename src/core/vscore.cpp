@@ -751,6 +751,8 @@ VSNode::VSNode(const VSMap *in, VSMap *out, const std::string &name, vs3::VSFilt
     }
 
     updateCacheState();
+    if (cacheEnabled)
+        registerCache(true);
 
     if (core->enableGraphInspection) {
         functionFrame = core->functionFrame;
@@ -776,6 +778,8 @@ VSNode::VSNode(const std::string &name, const VSVideoInfo *vi, VSFilterGetFrame 
     }
 
     updateCacheState();
+    if (cacheEnabled)
+        registerCache(true);
 
     if (core->enableGraphInspection) {
         functionFrame = core->functionFrame;
@@ -804,6 +808,8 @@ VSNode::VSNode(const std::string &name, const VSAudioInfo *ai, VSFilterGetFrame 
     }
 
     updateCacheState();
+    if (cacheEnabled)
+        registerCache(true);
 
     if (core->enableGraphInspection) {
         functionFrame = core->functionFrame;
@@ -825,10 +831,12 @@ VSNode::~VSNode() {
 
 void VSNode::registerCache(bool add) {
     std::lock_guard<std::mutex> lock(core->cacheLock);
-    if (add)
+    if (add) {
         core->caches.insert(this);
-    else
+    } else {
+        assert(this->cache.size() == 0);
         core->caches.erase(this);
+    }
 }
 
 void VSNode::updateCacheState() {
