@@ -220,7 +220,8 @@ def _get_vapoursynth_config_path():
     if sys.platform == "win32":
         config_path = Path(os.getenv("APPDATA")) / "vapoursynth"
     else:
-        config_path = Path.home() / ".config/vapoursynth"
+        config_home = os.getenv("XDG_CONFIG_HOME") or Path.home() / ".config"
+        config_path = Path(config_home) / "vapoursynth"
     config_path.mkdir(parents=True, exist_ok=True)
     return config_path / "vapoursynth.toml"
 
