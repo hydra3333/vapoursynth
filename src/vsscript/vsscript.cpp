@@ -115,8 +115,15 @@ static std::pair<std::filesystem::path, std::filesystem::path> readEnvConfig(con
 
     std::filesystem::path configPath = _wgetenv(L"APPDATA");
 #else
-    std::filesystem::path configPath = std::getenv("HOME");
-    configPath /= ".config";
+    std::filesystem::path configPath;
+    const auto xdg_config_home = std::getenv("XDG_CONFIG_HOME");
+
+    if (xdg_config_home && *xdg_config_home) {
+        configPath = xdg_config_home;
+    } else {
+        const auto home = std::getenv("HOME");
+        configPath = std::filesystem::path(home ? home : "") / ".config";
+    }
 #endif
     configPath /= "vapoursynth";
     configPath /= "vapoursynth.toml";
