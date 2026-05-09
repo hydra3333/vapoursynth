@@ -69,7 +69,7 @@ struct ByteTraits {
 
     static __m256i shl_insert_lo(__m256i x, uint8_t y)
     {
-        return _mm256_or_si256(_mm256_castsi128_si256(_mm_cvtsi32_si128(y)), mm256_slli_ex_si256<1>(x));
+        return _mm256_or_si256(_mm256_zextsi128_si256(_mm_cvtsi32_si128(y)), mm256_slli_ex_si256<1>(x));
     }
 
     static __m256i shr_insert(__m256i x, uint8_t y, unsigned idx)
@@ -91,7 +91,7 @@ struct WordTraits {
 
     static __m256i shl_insert_lo(__m256i x, uint16_t y)
     {
-        return _mm256_or_si256(_mm256_castsi128_si256(_mm_cvtsi32_si128(y)), mm256_slli_ex_si256<2>(x));
+        return _mm256_or_si256(_mm256_zextsi128_si256(_mm_cvtsi32_si128(y)), mm256_slli_ex_si256<2>(x));
     }
 
     static __m256i shr_insert(__m256i x, uint16_t y, unsigned idx)
@@ -113,7 +113,7 @@ struct FloatTraits {
 
     static __m256 shl_insert_lo(__m256 x, float y)
     {
-        return _mm256_or_ps(_mm256_castsi256_ps(mm256_slli_ex_si256<4>(_mm256_castps_si256(x))), _mm256_castps128_ps256(_mm_load_ss(&y)));
+        return _mm256_or_ps(_mm256_castsi256_ps(mm256_slli_ex_si256<4>(_mm256_castps_si256(x))), _mm256_zextps128_ps256(_mm_load_ss(&y)));
     }
 
     static __m256 shr_insert(__m256 x, float y, unsigned idx)
