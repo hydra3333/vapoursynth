@@ -936,7 +936,7 @@ int main(int argc, char **argv) {
     if (!SetConsoleCtrlHandler(HandlerRoutine, TRUE))
         fprintf(stderr, "Failed to register signal handler\n");
 #else
-    sigaction sa{};
+    struct sigaction sa{};
     sa.sa_handler = HandlerRoutine;
     sigemptyset(&sa.sa_mask);
     if (sigaction(SIGINT, &sa, nullptr) != 0)
