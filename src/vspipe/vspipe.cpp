@@ -37,6 +37,9 @@
 #ifdef VS_TARGET_OS_WINDOWS
 #include <io.h>
 #include <fcntl.h>
+#else
+#include <signal.h>
+#include <unistd.h>
 #endif
 
 #define __STDC_FORMAT_MACROS
@@ -57,6 +60,10 @@ static BOOL WINAPI HandlerRoutine(DWORD dwCtrlType) {
     default:
         return FALSE;
     }
+}
+#else
+static void HandlerRoutine(int sig) {
+    _exit(1);
 }
 #endif
 
@@ -926,7 +933,14 @@ int main(int argc, char **argv) {
 
     // Set the signal handler AFTER python initialization because it handles signals even if you tell it not to
 #ifdef VS_TARGET_OS_WINDOWS
-    SetConsoleCtrlHandler(HandlerRoutine, TRUE);
+    if (!SetConsoleCtrlHandler(HandlerRoutine, TRUE))
+        fprintf(stderr, "Failed to register signal handler\n");
+#else
+    sigaction sa{};
+    sa.sa_handler = HandlerRoutine;
+    sigemptyset(&sa.sa_mask);
+    if (sigaction(SIGINT, &sa, nullptr) != 0)
+        fprintf(stderr, "Failed to register signal handler\n");
 #endif
 
     VSPipeOptions opts{};
