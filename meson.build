@@ -221,6 +221,7 @@ py.install_sources(
         'src/py/__init__.py',
         'src/py/__main__.py',
         'src/py/_cli.py',
+        'src/py/_shell.py',
         'src/py/_utils.py',
         'src/py/vapoursynth.pyi',
     ),

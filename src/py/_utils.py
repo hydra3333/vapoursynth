@@ -5,6 +5,7 @@ import tomllib
 from ctypes.util import find_library
 from pathlib import Path, PurePath
 
+from ._shell import update_shell
 from .vapoursynth import Error, __version__
 
 
@@ -392,30 +393,30 @@ def register_legacy_install():
 
 
 def register_install():
-    if sys.platform != "win32":
-        raise Error("Command is only supported on Windows!")
+    if sys.platform == "win32":
+        entries = [
+            {
+                "subkey": "Environment",
+                "value_name": "VSSCRIPT_PATH",
+                "value_data": get_vsscript(),
+            }
+        ]
 
-    entries = [
-        {
-            "subkey": "Environment",
-            "value_name": "VSSCRIPT_PATH",
-            "value_data": get_vsscript(),
-        }
-    ]
+        if not _write_registry_entries(entries):
+            print("Couldn't write to registry!")
+            sys.exit(1)
+        else:
+            from ctypes.wintypes import HWND, UINT, WPARAM
 
-    if not _write_registry_entries(entries):
-        print("Couldn't write to registry!")
-        sys.exit(1)
+            user32 = ctypes.WinDLL("user32.dll")
+            SendMessageTimeoutW = user32.SendMessageTimeoutW
+            SendMessageTimeoutW.argtypes = [HWND, UINT, WPARAM, ctypes.c_wchar_p, UINT, UINT, ctypes.c_void_p]
+            SendMessageTimeoutW.restype = ctypes.c_void_p
+            #       SendMessageTimeoutW(HWND_BROADCAST, WM_SETTINGCHANGE, 0, "Environment", SMTO_ABORTIFHUNG, 0, 2000, NULL)
+            SendMessageTimeoutW(0xFFFF, 0x001A, 0, "Environment", 2, 2000, 0)
+            print("Successfully set environment variables!")
     else:
-        from ctypes.wintypes import HWND, UINT, WPARAM
-
-        user32 = ctypes.WinDLL("user32.dll")
-        SendMessageTimeoutW = user32.SendMessageTimeoutW
-        SendMessageTimeoutW.argtypes = [HWND, UINT, WPARAM, ctypes.c_wchar_p, UINT, UINT, ctypes.c_void_p]
-        SendMessageTimeoutW.restype = ctypes.c_void_p
-        #       SendMessageTimeoutW(HWND_BROADCAST, WM_SETTINGCHANGE, 0, "Environment", SMTO_ABORTIFHUNG, 0, 2000, NULL)
-        SendMessageTimeoutW(0xFFFF, 0x001A, 0, "Environment", 2, 2000, 0)
-        print("Successfully set environment variables!")
+        update_shell(get_vsscript())
 
 
 def register_vfw():
