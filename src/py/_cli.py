@@ -71,6 +71,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     get_plugin_dir_parser.set_defaults(func=lambda *_: print(get_plugin_dir()))
 
+    register_install_parser = subparsers.add_parser(
+        "register-install",
+        help="Register the current installation in the user environment",
+        description="Register the current installation in the user environment.",
+    )
+    register_install_parser.set_defaults(func=lambda *_: register_install())
+
     if sys.platform == "win32":
         open_plugin_dir_parser = subparsers.add_parser(
             "open-plugin-dir",
@@ -78,13 +85,6 @@ def build_parser() -> argparse.ArgumentParser:
             description="Open the bundled plugin directory in Explorer.",
         )
         open_plugin_dir_parser.set_defaults(func=lambda *_: _open_plugin_dir())
-
-        register_install_parser = subparsers.add_parser(
-            "register-install",
-            help="Register the current installation in the user environment",
-            description="Register the current installation in the user environment.",
-        )
-        register_install_parser.set_defaults(func=lambda *_: register_install())
 
         register_legacy_install_parser = subparsers.add_parser(
             "register-legacy-install",
