@@ -11,17 +11,14 @@ The recommended way to install VapourSynth is through pip. There are currently b
 3. Run ``vapoursynth config``
 4. (Windows only) Update the Visual Studio 2015-2026 Redistributable if told to
 
-Optional on Windows:
-
+Optional:
 5. Run ``vapoursynth register-install`` to set the VSSCRIPT_PATH environment variable to allow other applications to find the library
+
+Optional on Windows:
 6. Run ``vapoursynth register-legacy-install`` to write installation information to the registry so applications not aware of R74 and later still work
 7. Run ``vapoursynth register-vfw`` to register the VFW module
 
 Note that you can easily switch multiple installs in virtual environments by using these commands.
-
-Optional on MacOS, Linux and similar:
-
-5. Set the VSSCRIPT_PATH environment variable to allow other applications to find the library, you can get the path by running ``vapoursynth get-vsscript``
 
 Installation is now done. If you want to use VSRepo you can simply install it with ``pip install vsrepo``
 
