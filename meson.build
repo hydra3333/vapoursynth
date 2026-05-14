@@ -1,5 +1,5 @@
 project('VapourSynth', 'c', 'cpp', 'cython',
-    default_options: ['buildtype=release', 'b_lto=true', 'b_ndebug=if-release', 'c_std=c99', 'cpp_std=c++17'],
+    default_options: ['buildtype=release', 'b_lto=true', 'b_ndebug=if-release', 'c_std=c11', 'cpp_std=c++17'],
     license: 'LGPL-2.1-or-later',
     license_files: 'COPYING.LESSER',
     meson_version: '>=1.3.0',
